@@ -271,8 +271,9 @@ pub fn register_lints(_sess: &rustc_session::Session, lint_store: &mut LintStore
     lint_store.register_late_pass(|_| Box::new(SymbolNewForShortLiteral));
     lint_store.register_late_pass(|_| Box::new(StorageWriteWithoutRead));
     lint_store.register_late_pass(|_| Box::new(InefficientBytesConcat));
-    lint_store.register_late_pass(|_| Box::new(MapInsertInLoop));        lint_store.register_late_pass(|_| Box::new(BytesAppendInLoop));
-        lint_store.register_late_pass(|_| Box::new(DeepContractRecursion));
+    lint_store.register_late_pass(|_| Box::new(MapInsertInLoop));
+    lint_store.register_late_pass(|_| Box::new(BytesAppendInLoop));
+    lint_store.register_late_pass(|_| Box::new(DeepContractRecursion));
 }
 
 rustc_session::declare_lint! {
