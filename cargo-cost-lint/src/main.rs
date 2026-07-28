@@ -64,6 +64,8 @@ struct SarifToolDriver {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "informationUri")]
     information_uri: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    rules: Vec<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -400,6 +402,7 @@ fn main() {
                         information_uri: Some(
                             "https://github.com/Tollcraft/soroban-cost-linter".to_string(),
                         ),
+                        rules,
                     },
                 },
                 results: sarif_results,
