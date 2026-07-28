@@ -199,8 +199,9 @@ fn real_world_corpus_triage() {
         for f in &findings {
             eprintln!("  {}:{} — {} — {}", f.file, f.line, f.lint_name, f.message);
         }
+        let count = findings.len();
         all_findings.insert(name.clone(), findings);
-        grand_total += all_findings.get(&name).map_or(0, |v| v.len());
+        grand_total += count;
     }
 
     eprintln!(
