@@ -802,17 +802,14 @@ impl<'tcx> LateLintPass<'tcx> for DeepContractRecursion {
                 if self.span.is_some() {
                     return;
                 }
-                if let hir::ExprKind::Call(callee, _args) = &expr.kind {
-                    if let hir::ExprKind::Path(ref qpath) = callee.kind {
-                        if let Some(callee_def_id) =
-                            self.cx.qpath_res(qpath, callee.hir_id).opt_def_id()
-                        {
-                            if callee_def_id == self.fn_def_id {
-                                self.span = Some(expr.span);
-                                return;
-                            }
-                        }
-                    }
+                if let hir::ExprKind::Call(callee, _args) = &expr.kind
+                    && let hir::ExprKind::Path(ref qpath) = callee.kind
+                    && let Some(callee_def_id) =
+                        self.cx.qpath_res(qpath, callee.hir_id).opt_def_id()
+                    && callee_def_id == self.fn_def_id
+                {
+                    self.span = Some(expr.span);
+                    return;
                 }
                 intravisit::walk_expr(self, expr);
             }
