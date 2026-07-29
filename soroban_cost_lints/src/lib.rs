@@ -244,6 +244,10 @@ pub const LINT_METADATA: &[LintMetadata] = &[
         lint: BYTES_APPEND_IN_LOOP,
         category: LintCategory::Memory,
     },
+    LintMetadata {
+        lint: DEEP_CONTRACT_RECURSION,
+        category: LintCategory::Compute,
+    },
 ];
 
 #[unsafe(no_mangle)]
@@ -258,6 +262,7 @@ pub fn register_lints(_sess: &rustc_session::Session, lint_store: &mut LintStore
         INEFFICIENT_BYTES_CONCAT,
         MAP_INSERT_IN_LOOP,
         BYTES_APPEND_IN_LOOP,
+        DEEP_CONTRACT_RECURSION,
     ]);
     lint_store.register_late_pass(|_| Box::new(SorobanStorageInLoop));
     lint_store.register_late_pass(|_| Box::new(RedundantEnvClone));
@@ -268,6 +273,7 @@ pub fn register_lints(_sess: &rustc_session::Session, lint_store: &mut LintStore
     lint_store.register_late_pass(|_| Box::new(InefficientBytesConcat));
     lint_store.register_late_pass(|_| Box::new(MapInsertInLoop));
     lint_store.register_late_pass(|_| Box::new(BytesAppendInLoop));
+    lint_store.register_late_pass(|_| Box::new(DeepContractRecursion));
 }
 
 rustc_session::declare_lint! {
@@ -757,6 +763,76 @@ impl<'tcx> LateLintPass<'tcx> for MapInsertInLoop {
                     "accumulate mutations in memory first and write once after the loop",
                 );
             }
+        }
+    }
+}
+
+// =======================================================================
+// deep_contract_recursion — Lint
+// =======================================================================
+
+rustc_session::declare_lint! {
+    pub DEEP_CONTRACT_RECURSION,
+    Warn,
+    "deep or unbounded recursion detected in contract function"
+}
+pub struct DeepContractRecursion;
+rustc_session::impl_lint_pass!(DeepContractRecursion => [DEEP_CONTRACT_RECURSION]);
+
+impl<'tcx> LateLintPass<'tcx> for DeepContractRecursion {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        _: rustc_hir::intravisit::FnKind<'tcx>,
+        _: &'tcx hir::FnDecl<'tcx>,
+        body: &'tcx hir::Body<'tcx>,
+        _: rustc_span::Span,
+        fn_def_id: rustc_hir::def_id::LocalDefId,
+    ) {
+        let def_id = fn_def_id.to_def_id();
+
+        struct RecursionFinder<'a, 'tcx> {
+            cx: &'a LateContext<'tcx>,
+            fn_def_id: DefId,
+            span: Option<rustc_span::Span>,
+        }
+
+        impl<'a, 'tcx> Visitor<'tcx> for RecursionFinder<'a, 'tcx> {
+            fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+                if self.span.is_some() {
+                    return;
+                }
+                if let hir::ExprKind::Call(callee, _args) = &expr.kind
+                    && let hir::ExprKind::Path(ref qpath) = callee.kind
+                    && let Some(callee_def_id) =
+                        self.cx.qpath_res(qpath, callee.hir_id).opt_def_id()
+                    && callee_def_id == self.fn_def_id
+                {
+                    self.span = Some(expr.span);
+                    return;
+                }
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        let mut finder = RecursionFinder {
+            cx,
+            fn_def_id: def_id,
+            span: None,
+        };
+        finder.visit_body(body);
+
+        if let Some(span) = finder.span {
+            span_lint_and_help(
+                cx,
+                DEEP_CONTRACT_RECURSION,
+                span,
+                "direct recursion detected in contract function",
+                None,
+                "avoid recursion in Soroban contract functions — the Wasm call stack is \
+                 limited and each recursive call consumes CPU budget; \
+                 consider using an iterative loop instead",
+            );
         }
     }
 }

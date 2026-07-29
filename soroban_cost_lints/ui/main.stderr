@@ -185,5 +185,14 @@ LL |         v.push_back(i); // Should Warn
    |
    = help: accumulate values in native Rust collections first, then batch host operations or convert to SDK containers once after the loop; pre-size where practical
 
-warning: 23 warnings emitted
+warning: direct recursion detected in contract function
+  --> $DIR/main.rs:579:9
+   |
+LL |         bad_direct_recursion(x - 1) + 1 // Should Warn
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: avoid recursion in Soroban contract functions — the Wasm call stack is limited and each recursive call consumes CPU budget; consider using an iterative loop instead
+   = note: `#[warn(deep_contract_recursion)]` on by default
+
+warning: 24 warnings emitted
 

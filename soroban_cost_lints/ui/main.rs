@@ -568,4 +568,37 @@ fn allowed_unnecessary_vec_allocation() {
     let _unused = Vec::new(); // Good (allowed)
 }
 
+// =======================================================================
+// deep_contract_recursion — Fixtures
+// =======================================================================
+
+fn bad_direct_recursion(x: u32) -> u32 {
+    if x == 0 {
+        0
+    } else {
+        bad_direct_recursion(x - 1) + 1 // Should Warn
+    }
+}
+
+fn good_no_recursion(x: u32) -> u32 {
+    let mut sum = 0;
+    for i in 0..x {
+        sum += i;
+    }
+    sum
+}
+
+fn good_non_recursive_helper(a: u32, b: u32) -> u32 {
+    a + b
+}
+
+#[allow(deep_contract_recursion)]
+fn allowed_direct_recursion(x: u32) -> u32 {
+    if x == 0 {
+        0
+    } else {
+        allowed_direct_recursion(x - 1) + 1 // Good (allowed)
+    }
+}
+
 fn main() {}
